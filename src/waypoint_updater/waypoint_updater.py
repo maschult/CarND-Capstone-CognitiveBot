@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 
 import math
 
@@ -22,18 +23,20 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+MAX_DECEL     = 0.5 # maximum deceleration
 
 
 class WaypointUpdater(object):
     def __init__(self):
-
         rospy.init_node('waypoint_updater')
 
-        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
-        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
+        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb, queue_size=1)
 
-        # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-        rospy.Subscriber('/traffic_waypoint', Lane, self.traffic_cb)
+        # TODO DONE: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb, queue_size=1)
+        # (marco) do we need the subscriber for /obstacle_waypoint at the moment?
+        rospy.Subscriber('/obstacle_waypoint', Lane, self.obstacle_cb, queue_size=1)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -63,7 +66,6 @@ class WaypointUpdater(object):
         new_wp.twist.twist.angular.x = waypoint.twist.twist.angular.x
         new_wp.twist.twist.angular.y = waypoint.twist.twist.angular.y
         new_wp.twist.twist.angular.z = waypoint.twist.twist.angular.z
-
         return new_wp
 
     def wpt_update(self):
@@ -114,24 +116,24 @@ class WaypointUpdater(object):
             rate.sleep()
 
     def pose_cb(self, msg):
-        # TODO: Implement
-        self.current_pose = msg
-        pass
+        # TODO DONE: Implement
+        self.current_pose = msg.pose 
 
-    def waypoints_cb(self, waypoints):
-        # TODO: Implement
-        self.base_waypoints = waypoints
-        pass
+    def waypoints_cb(self, msg):
+        # TODO DONE: Implement
+        # (marco) this is only necessary once
+        if self.base_waypoints is None:
+            self.base_waypoints = msg.waypoints
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
+        # TODO DONE: Callback for /traffic_waypoint message. Implement
+        rospy.loginfo("Traffic light detection: " + str(msg.data))
         if msg == -1:
             # no red traffic light detected
             self.traffic_light_wpt = None
         else:
             # stop for the ahead traffic light
-            self.traffic_light_wpt = msg
-        pass
+            self.traffic_light_wpt = msg.data
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later

@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import math
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -53,7 +54,6 @@ class TLDetector(object):
         self.visible_range = 300 # 300 meter to lookup distance
         self.simulation = True
         self.training = False
-
 
         rospy.spin()
 
@@ -106,27 +106,32 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        if self.waypoints is not None:
-            wpt_list = self.waypoints.waypoints
-        else:
+        #TODO DONE implement
+        if self.waypoints is None:
             return None
+
         # Create variables for nearest distance and neighbour
         neighbour_index = None
         neighbour_distance = 9999.0
 
+        pos_x = pose.position.x
+        pos_y = pose.position.y
+
         # Find Neighbour
-        for i in range(len(wpt_list)):
-            wpti = wpt_list[i].pose.pose.position
-            distance = math.sqrt(
-                (wpti.x - pose.position.x) ** 2 + (wpti.y - pose.position.y) ** 2)# + (wpti.z - pose.position.z) ** 2)
+	for i, waypoint in enumerate(self.waypoints):
+            waypoint_x = waypoint.pose.pose.position.x
+            waypoint_y = waypoint.pose.pose.position.y
+            distance = math.sqrt((pos_x - waypoint_x)**2 + (pos_y - waypoint_y)**2)
+            
+            # check for closer neighbours
             if distance < neighbour_distance:
                 neighbour_index = i
                 neighbour_distance = distance
 
+        # return the index of the closest neighbour
         return neighbour_index
 
-     # return ground truth light state
+    # return ground truth light state
     def get_light_state_ground_truth(self, light_index):
         return light.state
 
@@ -140,8 +145,6 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-
-
         if(not self.has_image):
             self.prev_light_loc = None
             return False
@@ -151,14 +154,12 @@ class TLDetector(object):
         #Get classification
         return self.light_classifier.get_classification(cv_image)
 
-    def process_traffic_lights(self):
+def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
             location and color
-
         Returns:
             int: index of waypoint closes to the upcoming stop line for a traffic light (-1 if none exists)
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
-
         """
         light = None
         if((self.lights is not None) and (self.waypoints is not None) and (self.pose is not None)):
@@ -181,7 +182,7 @@ class TLDetector(object):
                 traffic_light_position = self.get_closest_waypoint(traffic_light_pose)
 
                 tl_wpt_closest = self.waypoints.waypoints[traffic_light_position].pose.pose.position
-                distance = math.sqrt(car_closest_wpt.x - tl_wpt_closest.x) ** 2 +
+                distance = math.sqrt((car_closest_wpt.x - tl_wpt_closest.x) ** 2 +
                                     (car_closest_wpt.y - tl_wpt_closest.y) ** 2 )
                                     #+ (car_closest_wpt.z - tl_wpt_closest.z) ** 2)
 
